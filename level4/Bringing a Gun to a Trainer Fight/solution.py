@@ -1,63 +1,73 @@
-from math import sqrt, gcd
+import math
+
+X = 0; Y = 1
+YOU = 0; TRAINER = 1
 
 
-class Field:
+def mirrorMap(target, dimensions, distance):
+    " returns target's coordinates in the mirrored map "
 
-    def __init__(self, dimensions, you, trainer, distance):
-        self.dimensions = dimensions
-        self.you = you
-        self.trainer = trainer
-        self.distance = distance
+    mirrored = [[], []]  # [ X[], Y[] ]
 
-    def shot(self, dx, dy):
-        X = 0; Y = 1
-        x, y = self.you
-        x += dx; y += dy
-        count = 1
+    for i in range(-(distance // dimensions[X]) - 1, (distance // dimensions[X] + 2)):
+        mirrored[X].append(getMirror(i, target[X], dimensions[X]))
+        
+    for i in range(-(distance // dimensions[Y]) - 1, (distance // dimensions[Y] + 2)):
+        mirrored[Y].append(getMirror(i, target[Y], dimensions[Y]))
 
-        while sqrt((dx * dx + dy * dy) * count * count) <= self.distance:
-            while x < 0 or x > self.dimensions[X]:
-                if x > self.dimensions[X]:
-                    x = 2 * self.dimensions[X] - x
-                    dx *= -1
-                if x < 0:
-                    x *= -1; dx *= -1
-            while y < 0 or y > self.dimensions[Y]:
-                if y > self.dimensions[Y]:
-                    y = 2 * self.dimensions[Y] - y
-                    dy *= -1
-                if y < 0:
-                    y *= -1; dy *= -1
+    return mirrored
 
-            if x == self.you[X] and y == self.you[Y]:
-                return False
-            if x == self.trainer[X] and y == self.trainer[Y]:
-                return True
 
-            count += 1
-            x += dx; y += dy
+def getMirror(mirror, coordinates, dimensions):
+    " returns coordinates that in the mirror "
 
-        return False
+    result = coordinates
+    mirror_rotation = [2*(dimensions - coordinates), 2*coordinates]
+    
+    if mirror < 0:
+        for i in range(mirror, 0):
+            result -= mirror_rotation[i % 2]  # when even -> 2*(dimensions - coordinates)
+    else:
+        for i in range(mirror):
+            result += mirror_rotation[i % 2]  # when even -> 2*(dimensions - coordinates)
+     
+        #  same as
+        # for i in range(1, mirror + 1):
+        #     result += mirror_rotation[(i+1) % 2]
+    
+    return result
 
 
 def solution(dimensions, your_position, trainer_position, distance):
-    #Your code here
+    " returns number of directions hit the elite trainer "
 
-    field = Field(dimensions, your_position, trainer_position, float(distance))
+    mirrored = [
+            mirrorMap(your_position, dimensions, distance),    # YOU
+            mirrorMap(trainer_position, dimensions, distance)  # TRAINER
+        ]
+    result = set()
+    angles = {}
+    
+    # mapping YOU
+    for x in mirrored[YOU][X]:
+        for y in mirrored[YOU][Y]:
+            beam = math.atan2((your_position[Y] - y), (your_position[X] - x))
+            l = math.sqrt((your_position[X] - x)**2 + (your_position[Y] - y)**2)
+            if [x, y] != your_position and l <= distance:
+                if(beam not in angles or l < angles[beam]):
+                    angles[beam] = l
 
-    result = field.shot(1, 0) + field.shot(-1, 0) + field.shot(0, 1) \
-        + field.shot(0, -1) + field.shot(1, 1) + field.shot(-1, 1) \
-        + field.shot(1, -1) + field.shot(-1, -1)
+    # mapping TRAINER
+    for x in mirrored[TRAINER][X]:
+        for y in mirrored[TRAINER][Y]:
+            beam = math.atan2((your_position[Y] - y), (your_position[X] - x))
+            l = math.sqrt((your_position[X] - x)**2 + (your_position[Y] - y)**2)
+            if [x, y] != your_position and l <= distance:
+                if(beam not in angles or l < angles[beam]):
+                    angles[beam] = l
+                    result.add(beam)
 
-    for i in range(1, distance):
-        for j in range(1, distance):
-            if gcd(i, j) == 1:
-                if sqrt(i * i + j * j) > distance:
-                    break
-                result += field.shot(i, j) + field.shot(-i, j) \
-                     + field.shot(i, -j) + field.shot(-i ,-j)
-
-    return result
+    return len(result)
 
 
 if __name__ == "__main__":
